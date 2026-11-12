@@ -695,6 +695,12 @@ dialog.modal::backdrop{background:rgba(23,36,51,.46)}
 .settings-section p{font-size:14px;line-height:1.45;color:var(--ink-soft)}
 .settings-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
+.account-fields{display:grid;gap:8px;margin-top:10px}
+.account-status{margin-top:8px!important;min-height:1.4em}
+.account-status.is-error{color:var(--stamp-soft)!important}
+.account-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.account-conflict{margin-top:10px;padding:12px;border:1.3px dashed rgba(38,57,79,.35);border-radius:8px;background:rgba(255,255,255,.35)}
+.account-conflict-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .backup-date{font-size:14px;color:var(--ink);margin-top:8px}
 .privacy-note{font-size:13.5px;line-height:1.5;color:var(--ink-soft);padding-top:12px}
 .night-status{font-size:14px;color:var(--ink)}
@@ -1051,7 +1057,7 @@ dialog.modal::backdrop{background:rgba(23,36,51,.46)}
     <div class="mascot-bubble" id="welcome-mascot-bubble" hidden></div>
     <button type="button" class="mascot-button" id="welcome-mascot-button" aria-label="2B, maskot Corat-Coret. Ketuk untuk menyapa."></button>
   </div>
-  <p class="welcome-privacy">Data tinggal di perangkat ini. Tanpa akun, iklan, atau pelacak.</p>
+  <p class="welcome-privacy">Tanpa akun, data tinggal di perangkat ini. Jika memilih masuk, catatan disinkronkan ke akunmu.</p>
 </section>
 
 <dialog class="modal note-modal" id="note-dialog" aria-labelledby="editor-heading">
@@ -1190,6 +1196,35 @@ dialog.modal::backdrop{background:rgba(23,36,51,.46)}
         </div>
       </section>
       <section class="settings-section">
+        <h3>Akun dan sinkronisasi</h3>
+        <p>Opsional. Masuk untuk menyinkronkan catatan antarperangkat; tanpa akun, aplikasi tetap lokal.</p>
+        <p class="account-status" id="account-status" role="status" aria-live="polite">Belum masuk. Catatan hanya tersimpan di perangkat ini.</p>
+        <div class="account-fields" id="account-fields">
+          <label class="field-label" for="account-email">Email</label>
+          <input class="text-input" id="account-email" type="email" autocomplete="email" maxlength="254" placeholder="nama@email.com">
+          <label class="field-label" for="account-password">Kata sandi</label>
+          <input class="text-input" id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="Minimal 8 karakter">
+          <div class="account-buttons">
+            <button type="button" class="plain-btn primary" id="account-sign-in">Masuk</button>
+            <button type="button" class="plain-btn" id="account-sign-up">Daftar</button>
+          </div>
+        </div>
+        <div class="account-fields" id="account-session" hidden>
+          <p id="account-identity"></p>
+          <div class="account-buttons">
+            <button type="button" class="plain-btn" id="account-sync">Sinkronkan sekarang</button>
+            <button type="button" class="plain-btn" id="account-sign-out">Keluar</button>
+          </div>
+        </div>
+        <div class="account-conflict" id="account-conflict" hidden>
+          <p id="account-conflict-message">Kedua salinan berbeda. Pilihan akan menggantikan data di sisi lain; cadangkan dulu bila ragu.</p>
+          <div class="account-conflict-actions">
+            <button type="button" class="plain-btn primary" id="account-use-cloud">Ganti data perangkat dengan cloud</button>
+            <button type="button" class="plain-btn" id="account-use-local">Ganti data cloud dengan perangkat ini</button>
+          </div>
+        </div>
+      </section>
+      <section class="settings-section">
         <h3>Data</h3>
         <p>Cadangkan semua buku ke berkas .json, atau pulihkan dari cadangan lama. Untuk PDF atau Word, buka menu catatan.</p>
         <div class="settings-actions">
@@ -1200,7 +1235,7 @@ dialog.modal::backdrop{background:rgba(23,36,51,.46)}
         <input type="file" id="restore-file" accept=".json,application/json" hidden>
         <p class="backup-date" id="backup-date">Cadangan terakhir: belum pernah.</p>
       </section>
-      <p class="privacy-note">Corat-Coret tidak meminta akun, memasang iklan, atau mengirim data ke mana pun. Isi catatan diperlakukan sebagai teks biasa, bukan HTML.</p>
+      <p class="privacy-note">Tanpa akun, data hanya tinggal di perangkat ini. Jika masuk, data disimpan di Supabase dan hanya dapat diakses akunmu. Corat-Coret tidak memasang iklan atau pelacak. Isi catatan diperlakukan sebagai teks biasa, bukan HTML.</p>
     </div>
     <div class="book-form-foot">
       <span class="spacer"></span>
@@ -1242,6 +1277,13 @@ dialog.modal::backdrop{background:rgba(23,36,51,.46)}
 
 const STORAGE_KEY = 'corat-coret.v1';
 const APP_VERSION = 1;
+const SUPABASE_URL = 'https://rrcleivmoovzognzdbfw.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_aHlYyl2I9z4WyVut-YAiBQ_AoPPOZZ8';
+const SUPABASE_AUTH_REDIRECT_URL = 'https://curat-coret.vercel.app/';
+const CLOUD_TABLE = 'user_states';
+const CLOUD_ENABLED_KEY = 'corat-coret.cloud-enabled.v1';
+const CLOUD_VERSION_PREFIX = 'corat-coret.cloud-version.';
+const CLOUD_DIRTY_PREFIX = 'corat-coret.cloud-dirty.';
 const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const BACKUP_ERROR = 'Berkas tidak terbaca. Pilih berkas .json hasil Cadangkan dari Corat-Coret.';
 const EMPTY_BOOK_TEXT = 'Buku ini masih kosong. Tulis catatan pertama.';
@@ -1364,6 +1406,20 @@ const dom = {
   soundStatus: $('#sound-status'),
   settingsNight: $('#settings-night'),
   nightStatus: $('#night-status'),
+  accountStatus: $('#account-status'),
+  accountFields: $('#account-fields'),
+  accountEmail: $('#account-email'),
+  accountPassword: $('#account-password'),
+  accountSignIn: $('#account-sign-in'),
+  accountSignUp: $('#account-sign-up'),
+  accountSession: $('#account-session'),
+  accountIdentity: $('#account-identity'),
+  accountSync: $('#account-sync'),
+  accountSignOut: $('#account-sign-out'),
+  accountConflict: $('#account-conflict'),
+  accountConflictMessage: $('#account-conflict-message'),
+  accountUseCloud: $('#account-use-cloud'),
+  accountUseLocal: $('#account-use-local'),
   backupBtn: $('#backup-btn'),
   restoreBtn: $('#restore-btn'),
   openTrashBtn: $('#open-trash-btn'),
@@ -1383,6 +1439,19 @@ const dom = {
 };
 
 let state = null;
+let cloud = {
+  client: null,
+  clientPromise: null,
+  user: null,
+  version: null,
+  ready: false,
+  dirty: false,
+  pending: null,
+  timer: null,
+  pollTimer: null,
+  busy: false,
+  applying: false
+};
 let ui = {
   search: '',
   searchTimer: null,
@@ -2079,6 +2148,7 @@ function persistState() {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     ui.persistWarned = false;
+    if (!cloud.applying) recordLocalCloudChange();
     return true;
   } catch (error) {
     if (!ui.persistWarned) {
@@ -2086,6 +2156,427 @@ function persistState() {
       showToast('Perangkat tidak bisa menyimpan data. Cadangkan sekarang dari Pengaturan.', { duration: 10000 });
     }
     return false;
+  }
+}
+
+function cloudVersionKey(userId) {
+  return CLOUD_VERSION_PREFIX + userId;
+}
+
+function readCloudVersion(userId) {
+  try {
+    return window.localStorage.getItem(cloudVersionKey(userId));
+  } catch (error) {
+    throw new Error('Status sinkronisasi lokal tidak bisa dibaca.');
+  }
+}
+
+function writeCloudVersion(userId, version) {
+  try {
+    window.localStorage.setItem(cloudVersionKey(userId), version);
+  } catch (error) {
+    throw new Error('Status sinkronisasi lokal tidak bisa disimpan.');
+  }
+}
+
+function readCloudDirty() {
+  try {
+    return window.localStorage.getItem(CLOUD_DIRTY_PREFIX + 'active') === 'true';
+  } catch (error) {
+    throw new Error('Status perubahan lokal tidak bisa dibaca.');
+  }
+}
+
+function clearCloudDirty() {
+  try {
+    window.localStorage.removeItem(CLOUD_DIRTY_PREFIX + 'active');
+    cloud.dirty = false;
+  } catch (error) {
+    throw new Error('Status perubahan lokal tidak bisa diperbarui.');
+  }
+}
+
+function setCloudDirty() {
+  try {
+    window.localStorage.setItem(CLOUD_DIRTY_PREFIX + 'active', 'true');
+    cloud.dirty = true;
+  } catch (error) {
+    setCloudStatus('Perubahan tersimpan di perangkat, tetapi status sinkronisasi lokal gagal disimpan.', true);
+  }
+}
+
+function setCloudStatus(message, isError = false) {
+  dom.accountStatus.textContent = message;
+  dom.accountStatus.classList.toggle('is-error', isError);
+}
+
+function syncAccountUI() {
+  const signedIn = Boolean(cloud.user);
+  dom.accountFields.hidden = signedIn;
+  dom.accountSession.hidden = !signedIn;
+  dom.accountConflict.hidden = !cloud.pending;
+  dom.accountSignIn.disabled = cloud.busy;
+  dom.accountSignUp.disabled = cloud.busy;
+  dom.accountSync.disabled = cloud.busy;
+  dom.accountSignOut.disabled = cloud.busy;
+  dom.accountUseCloud.disabled = cloud.busy;
+  dom.accountUseLocal.disabled = cloud.busy;
+  dom.accountIdentity.textContent = cloud.user ? 'Masuk sebagai ' + (cloud.user.email || 'akun Supabase') : '';
+}
+
+function cloudErrorMessage(error) {
+  if (error && (error.code === '42P01' || error.code === 'PGRST205')) {
+    return 'Tabel sinkronisasi belum tersedia. Jalankan SQL setup pada Supabase terlebih dahulu.';
+  }
+  if (error && error.code === '42501') {
+    return 'Akses database ditolak. Periksa grants dan kebijakan RLS tabel user_states.';
+  }
+  return error && error.message ? error.message : 'Terjadi kesalahan saat menyinkronkan data.';
+}
+
+async function loadCloudClient() {
+  if (cloud.client) return cloud.client;
+  if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    throw new Error('Login perlu dibuka dari alamat HTTPS Vercel. Mode lokal tetap tersedia tanpa login.');
+  }
+  if (!cloud.clientPromise) {
+    cloud.clientPromise = import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
+      .then(({ createClient }) => {
+        cloud.client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: {
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            persistSession: true,
+            storageKey: 'corat-coret-supabase-auth'
+          }
+        });
+        return cloud.client;
+      })
+      .catch((error) => {
+        cloud.clientPromise = null;
+        throw new Error('Library sinkronisasi gagal dimuat. Periksa koneksi internet lalu coba lagi.');
+      });
+  }
+  return cloud.clientPromise;
+}
+
+function recordLocalCloudChange() {
+  let enabled = false;
+  try {
+    enabled = Boolean(window.localStorage.getItem(CLOUD_ENABLED_KEY));
+  } catch (error) {
+    setCloudStatus('Catatan tersimpan di perangkat, tetapi status akun tidak bisa dibaca.', true);
+    return;
+  }
+  if (!enabled) return;
+  setCloudDirty();
+  if (cloud.user && cloud.ready && !cloud.pending) scheduleCloudSave();
+}
+
+async function readCloudRecord() {
+  const result = await cloud.client
+    .from(CLOUD_TABLE)
+    .select('data,version,updated_at')
+    .eq('user_id', cloud.user.id)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return result.data;
+}
+
+function showCloudConflict(record) {
+  cloud.pending = record;
+  cloud.ready = false;
+  dom.accountConflictMessage.textContent = 'Kedua salinan berbeda. Pilihan akan menggantikan data di sisi lain; cadangkan dulu bila ragu.';
+  setCloudStatus('Perlu pilihan: gunakan data cloud atau data perangkat ini.');
+  syncAccountUI();
+  if (!dom.settingsDialog.open) showToast('Data perangkat dan cloud berbeda. Pilih sumbernya di Pengaturan > Akun dan sinkronisasi.');
+}
+
+async function applyCloudRecord(record) {
+  const next = normalizeState(record.data, { strict: true });
+  if (!next || !next.books.length) throw new Error('Data cloud tidak valid dan tidak diterapkan.');
+  next.onboarded = true;
+  cloud.applying = true;
+  state = next;
+  const saved = persistState();
+  cloud.applying = false;
+  if (!saved) throw new Error('Data cloud tidak bisa disimpan ke perangkat ini.');
+  cloud.version = record.version;
+  cloud.pending = null;
+  cloud.ready = true;
+  writeCloudVersion(cloud.user.id, record.version);
+  clearCloudDirty();
+  if (dom.app.hidden) {
+    showApp({ immediate: true });
+  } else {
+    renderAll({ revealActive: true });
+  }
+  setCloudStatus('Catatan disinkronkan dari akun cloud.');
+  syncAccountUI();
+}
+
+async function writeCloudSnapshot(expectedVersion = null) {
+  if (!state || !cloud.user) return false;
+  const version = crypto.randomUUID();
+  const payload = {
+    user_id: cloud.user.id,
+    data: exportedData(),
+    version,
+    updated_at: new Date().toISOString()
+  };
+  let result;
+  if (expectedVersion) {
+    result = await cloud.client
+      .from(CLOUD_TABLE)
+      .update({ data: payload.data, version: payload.version, updated_at: payload.updated_at })
+      .eq('user_id', cloud.user.id)
+      .eq('version', expectedVersion)
+      .select('version,updated_at')
+      .maybeSingle();
+  } else {
+    result = await cloud.client
+      .from(CLOUD_TABLE)
+      .insert(payload)
+      .select('version,updated_at')
+      .single();
+  }
+  if (result.error) {
+    if (!expectedVersion && result.error.code === '23505') {
+      const current = await readCloudRecord();
+      if (current) showCloudConflict(current);
+      return false;
+    }
+    throw result.error;
+  }
+  if (!result.data) {
+    const current = await readCloudRecord();
+    if (current) showCloudConflict(current);
+    else throw new Error('Data cloud berubah sebelum tersimpan. Coba sinkronkan lagi.');
+    return false;
+  }
+  cloud.version = result.data.version;
+  cloud.pending = null;
+  cloud.ready = true;
+  writeCloudVersion(cloud.user.id, result.data.version);
+  clearCloudDirty();
+  setCloudStatus('Semua catatan sudah disinkronkan.');
+  syncAccountUI();
+  return true;
+}
+
+async function processCloudSession(session) {
+  cloud.user = session.user;
+  cloud.ready = false;
+  cloud.pending = null;
+  cloud.version = readCloudVersion(cloud.user.id);
+  cloud.dirty = readCloudDirty();
+  window.localStorage.setItem(CLOUD_ENABLED_KEY, 'true');
+  syncAccountUI();
+  const remote = await readCloudRecord();
+  if (!remote) {
+    cloud.version = null;
+    if (state) {
+      await writeCloudSnapshot();
+    } else {
+      cloud.ready = true;
+      setCloudStatus('Akun siap. Catatan lokal akan disinkronkan setelah dibuat.');
+      syncAccountUI();
+    }
+  } else if (!state) {
+    await applyCloudRecord(remote);
+  } else if (!cloud.version) {
+    showCloudConflict(remote);
+  } else if (remote.version === cloud.version) {
+    cloud.version = remote.version;
+    cloud.ready = true;
+    if (cloud.dirty) await writeCloudSnapshot(remote.version);
+    else {
+      setCloudStatus('Akun terhubung. Catatan sudah terbaru.');
+      syncAccountUI();
+    }
+  } else if (cloud.dirty) {
+    showCloudConflict(remote);
+  } else {
+    await applyCloudRecord(remote);
+  }
+  startCloudPolling();
+}
+
+async function syncCloudNow(silent = false) {
+  if (!cloud.user || cloud.busy) return;
+  if (cloud.pending) {
+    setCloudStatus('Pilih sumber data yang ingin dipakai sebelum sinkronisasi dilanjutkan.');
+    return;
+  }
+  cloud.busy = true;
+  syncAccountUI();
+  try {
+    const remote = await readCloudRecord();
+    const localVersion = readCloudVersion(cloud.user.id);
+    cloud.dirty = readCloudDirty();
+    if (!remote) {
+      cloud.version = null;
+      if (state) await writeCloudSnapshot();
+      else {
+        cloud.ready = true;
+        setCloudStatus('Belum ada catatan cloud untuk akun ini.');
+      }
+    } else if (!state) {
+      await applyCloudRecord(remote);
+    } else if (!localVersion) {
+      showCloudConflict(remote);
+    } else if (remote.version === localVersion) {
+      cloud.version = remote.version;
+      cloud.ready = true;
+      if (cloud.dirty) await writeCloudSnapshot(remote.version);
+      else setCloudStatus('Semua catatan sudah terbaru.');
+    } else if (cloud.dirty) {
+      showCloudConflict(remote);
+    } else {
+      await applyCloudRecord(remote);
+    }
+  } catch (error) {
+    setCloudStatus(cloudErrorMessage(error), true);
+    if (!silent) showToast('Sinkronisasi gagal. Buka Pengaturan untuk melihat detailnya.');
+  } finally {
+    cloud.busy = false;
+    syncAccountUI();
+  }
+}
+
+function scheduleCloudSave() {
+  if (cloud.timer) window.clearTimeout(cloud.timer);
+  cloud.timer = window.setTimeout(() => {
+    cloud.timer = null;
+    syncCloudNow(true);
+  }, 900);
+}
+
+function startCloudPolling() {
+  if (cloud.pollTimer) window.clearInterval(cloud.pollTimer);
+  cloud.pollTimer = window.setInterval(() => {
+    if (!document.hidden && cloud.ready && cloud.user && !cloud.pending) syncCloudNow(true);
+  }, 45000);
+}
+
+async function resolveCloudConflict(useCloud) {
+  if (!cloud.pending || cloud.busy) return;
+  cloud.busy = true;
+  syncAccountUI();
+  try {
+    const current = await readCloudRecord();
+    if (!current) {
+      cloud.pending = null;
+      cloud.version = null;
+      cloud.ready = true;
+      if (useCloud) {
+        setCloudStatus('Catatan cloud sudah tidak ada. Data perangkat tidak berubah.');
+      } else {
+        await writeCloudSnapshot();
+      }
+      return;
+    }
+    if (current.version !== cloud.pending.version) {
+      showCloudConflict(current);
+      return;
+    }
+    if (useCloud) {
+      await applyCloudRecord(current);
+    } else {
+      await writeCloudSnapshot(current.version);
+    }
+  } catch (error) {
+    setCloudStatus(cloudErrorMessage(error), true);
+  } finally {
+    cloud.busy = false;
+    syncAccountUI();
+  }
+}
+
+async function authenticateCloud(action) {
+  if (cloud.busy) return;
+  const email = dom.accountEmail.value.trim().toLowerCase();
+  const password = dom.accountPassword.value;
+  if (!dom.accountEmail.validity.valid || !email || password.length < 8) {
+    setCloudStatus('Masukkan email yang valid dan kata sandi minimal 8 karakter.', true);
+    return;
+  }
+  cloud.busy = true;
+  syncAccountUI();
+  setCloudStatus(action === 'signup' ? 'Mendaftarkan akun...' : 'Masuk ke akun...');
+  try {
+    const client = await loadCloudClient();
+    const result = action === 'signup'
+      ? await client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: SUPABASE_AUTH_REDIRECT_URL }
+      })
+      : await client.auth.signInWithPassword({ email, password });
+    if (result.error) throw result.error;
+    dom.accountPassword.value = '';
+    if (action === 'signup' && !result.data.session) {
+      window.localStorage.setItem(CLOUD_ENABLED_KEY, 'pending');
+      setCloudStatus('Pendaftaran diterima. Buka tautan konfirmasi di email untuk mengaktifkan akun.');
+      return;
+    }
+    if (!result.data.session) throw new Error('Sesi login tidak diterima. Coba masuk kembali.');
+    window.localStorage.setItem(CLOUD_ENABLED_KEY, 'true');
+    await processCloudSession(result.data.session);
+  } catch (error) {
+    setCloudStatus(cloudErrorMessage(error), true);
+  } finally {
+    cloud.busy = false;
+    syncAccountUI();
+  }
+}
+
+async function signOutCloud() {
+  if (!cloud.client || !cloud.user || cloud.busy) return;
+  cloud.busy = true;
+  syncAccountUI();
+  try {
+    const result = await cloud.client.auth.signOut();
+    if (result.error) throw result.error;
+    if (cloud.timer) window.clearTimeout(cloud.timer);
+    if (cloud.pollTimer) window.clearInterval(cloud.pollTimer);
+    cloud.user = null;
+    cloud.version = null;
+    cloud.ready = false;
+    cloud.pending = null;
+    window.localStorage.removeItem(CLOUD_ENABLED_KEY);
+    setCloudStatus('Keluar dari akun. Salinan lokal tetap ada di perangkat ini.');
+  } catch (error) {
+    setCloudStatus(cloudErrorMessage(error), true);
+  } finally {
+    cloud.busy = false;
+    syncAccountUI();
+  }
+}
+
+async function resumeCloudSession() {
+  let enabled;
+  try {
+    enabled = window.localStorage.getItem(CLOUD_ENABLED_KEY);
+  } catch (error) {
+    setCloudStatus('Status akun tidak bisa dibaca dari penyimpanan lokal.', true);
+    return;
+  }
+  if (!enabled) return;
+  try {
+    const client = await loadCloudClient();
+    const result = await client.auth.getSession();
+    if (result.error) throw result.error;
+    if (result.data.session) {
+      await processCloudSession(result.data.session);
+    } else if (enabled === 'pending') {
+      setCloudStatus('Menunggu konfirmasi email untuk menyelesaikan pendaftaran.');
+    } else {
+      window.localStorage.removeItem(CLOUD_ENABLED_KEY);
+      setCloudStatus('Sesi berakhir. Masuk kembali untuk melanjutkan sinkronisasi.');
+    }
+  } catch (error) {
+    setCloudStatus(cloudErrorMessage(error), true);
   }
 }
 
@@ -2639,6 +3130,7 @@ function syncSettings() {
   dom.backupDate.textContent = 'Cadangan terakhir: ' + (state.prefs.lastBackupAt ? fullTimestamp(state.prefs.lastBackupAt) : 'belum pernah') + '.';
   syncSoundUI();
   syncNightUI();
+  syncAccountUI();
 }
 
 function openSettings() {
@@ -4012,6 +4504,12 @@ function bindSettingsEvents() {
   });
   dom.settingsSound.addEventListener('click', toggleSound);
   dom.settingsNight.addEventListener('click', toggleNight);
+  dom.accountSignIn.addEventListener('click', () => authenticateCloud('signin'));
+  dom.accountSignUp.addEventListener('click', () => authenticateCloud('signup'));
+  dom.accountSync.addEventListener('click', () => syncCloudNow());
+  dom.accountSignOut.addEventListener('click', signOutCloud);
+  dom.accountUseCloud.addEventListener('click', () => resolveCloudConflict(true));
+  dom.accountUseLocal.addEventListener('click', () => resolveCloudConflict(false));
   dom.settingsOwner.addEventListener('focus', () => {
     dom.settingsOwner.dataset.previous = state.owner;
   });
@@ -4704,10 +5202,12 @@ function init() {
     showApp({
       immediate: true
     });
+    resumeCloudSession();
     return;
   }
   state = loaded.state || null;
   showWelcome();
+  resumeCloudSession();
   const welcomeMascot = mascots[0];
   window.setTimeout(() => {
     if (welcomeMascot) sharpenMascot(welcomeMascot, 'Halo, aku 2B. Isi namamu di label buku, ya.');
